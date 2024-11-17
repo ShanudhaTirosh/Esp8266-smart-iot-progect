@@ -1,148 +1,97 @@
-# 🌱 Smart Plant Watering Project
+# 🌱 Smart Plant Watering System 🌱
 
-![Plant Watering](images/plant_watering_banner.jpg)
+A smart plant watering system that automatically monitors soil moisture, temperature, and humidity using ESP8266 NodeMCU.
 
-This **Smart Plant Watering Project** is an automated solution to monitor and maintain soil moisture for your plants. Using a NodeMCU ESP8266 connected to the Blynk IoT platform, soil moisture and temperature/humidity sensors, OLED display, and water pump relay, this project ensures your plants get the right amount of water when needed.
+## 📦 Components Required
 
----
+- ESP8266 NodeMCU
+- DHT11 Temperature & Humidity Sensor
+- Soil Moisture Sensor
+- OLED Display (SSD1306)
+- Relay Module
+- Water Pump
+- Jumper Wires
 
-## 📋 Table of Contents
+## ⚙️ Features
 
-- [✨ Features](#features)
-- [🔧 Hardware Requirements](#hardware-requirements)
-- [💻 Software Requirements](#software-requirements)
-- [📑 Setup Instructions](#setup-instructions)
-- [🚀 Usage](#usage)
-- [📜 Code Description](#code-description)
-- [📄 License](#license)
+- Automatic plant watering
+- Real-time temperature and humidity monitoring
+- OLED display for sensor readings
+- Blynk app integration for remote monitoring
 
----
+## 🛠️ Installation
 
-## ✨ Features
+1. Clone the repository
+   ```bash
+   git clone https://github.com/shanudhatirosh/Esp8266-progect-.git
+   ```
 
-- **Automatic Soil Moisture Monitoring**: Automatically waters plants when soil moisture drops below a set threshold.
-- **Temperature and Humidity Monitoring**: Measures environmental temperature and humidity.
-- **Remote Control and Monitoring**: Monitor and control settings from the Blynk app.
-- **Manual Pump Override**: Turn the pump on/off manually from the Blynk app.
-- **OLED Display**: Real-time display of soil moisture, temperature, and humidity.
-- **EEPROM Storage**: Saves soil moisture threshold settings to EEPROM.
+2. Install Required Libraries:
+   - Blynk
+   - Adafruit GFX
+   - Adafruit SSD1306
+   - DHT sensor library
 
----
+3. Upload Code:
+   - Open in Arduino IDE
+   - Update WiFi credentials
+   - Upload to ESP8266 NodeMCU
 
-## 🔧 Hardware Requirements
+## 📊 Wiring Connections
 
-![Hardware Setup](images/hardware_setup.png)
+| Component | ESP8266 Pin |
+|-----------|-------------|
+| OLED SDA | D2 (GPIO 4) |
+| OLED SCL | D1 (GPIO 5) |
+| DHT11 Data | D4 (GPIO 2) |
+| Soil Moisture | A0 (Analog) |
+| Relay Signal | D7 (GPIO 13) |
 
-- **ESP8266 NodeMCU** (ESP-12E)
-- **Soil Moisture Sensor**
-- **DHT11 Temperature and Humidity Sensor**
-- **Relay Module**
-- **Water Pump**
-- **OLED Display (128x64)**
-- **Power Supply**
+## 📱 Blynk Setup
 
----
+1. Download Blynk app
+2. Create new project
+3. Add widgets for:
+   - Soil Moisture (V1)
+   - Temperature (V2)
+   - Humidity (V3)
 
-## 💻 Software Requirements
+## 🔧 Configuration
 
-- **Arduino IDE**
-- **Blynk IoT App** (available on iOS & Android)
-- **Libraries**:
-  - [Blynk Library](https://github.com/blynkkk/blynk-library) (`BlynkSimpleEsp8266.h`)
-  - [Adafruit GFX and SSD1306 Libraries](https://github.com/adafruit/Adafruit-GFX-Library) for OLED display
-  - [DHTesp Library](https://github.com/beegee-tokyo/DHTesp) for the DHT11 sensor
+Modify these parameters in the code:
+- WiFi SSID
+- WiFi Password
+- Blynk Auth Token
+- Moisture Threshold
+- Pump Run Time
 
----
+## 💡 Troubleshooting
 
-## 📑 Setup Instructions
+- Check all connections
+- Verify library installations
+- Ensure proper power supply
+- Monitor serial output for debugging
 
-### 1️⃣ Hardware Setup
+## 📜 License
 
-- Connect the **Soil Moisture Sensor** to analog pin (`A0`) of the NodeMCU.
-- Connect the **Relay Module** to pin `D7` (GPIO13).
-- Connect the **DHT11 Sensor** to pin `D2` (GPIO4).
-- Connect the **OLED Display** to the I2C pins (`SDA` and `SCL`).
-- Connect the **Water Pump** to the relay.
+MIT License
 
-### 2️⃣ Blynk Setup
+## 🤝 Contributing
 
-1. Download the [Blynk app](https://blynk.io) and create a new project.
-2. Enter the **Template ID**, **Template Name**, and **Auth Token** from the code in your project.
-3. Add the following virtual pins:
-   - `V1` for soil moisture
-   - `V2` for temperature
-   - `V3` for humidity
-   - `V4` for manual pump override
-   - `V5` for setting moisture threshold
+1. Fork the repository
+2. Create your feature branch
+3. Commit changes
+4. Push to the branch
+5. Create pull request
 
-### 3️⃣ Arduino Code Setup
+## 👤 Author
 
-- Open the code in **Arduino IDE**.
-- Update the **Wi-Fi credentials** in the code:
-  ```cpp
-  char ssid[] = "your_network_ssid";
-  char pass[] = "your_network_password";
+[SHANUDHA TIROSH]
+- GitHub: [@Shanudhatirosh]
+- Email: Tiroshbrot123@gmail.com
 
-Enter your Blynk Auth Token:
+## 🌟 Acknowledgments
 
-char auth[] = "your_blynk_auth_token";
-
-Upload the code to your ESP8266.
-
-
-
----
-
-🚀 Usage
-
-Monitor real-time soil moisture, temperature, and humidity from the Blynk app.
-
-Use Manual Pump Control to override automatic watering as needed.
-
-Adjust the Soil Moisture Threshold from the app; this threshold will be saved to EEPROM to retain settings after reboot.
-
-
-
----
-
-📜 Code Description
-
-Key Components
-
-Sensor Data Collection: Reads soil moisture (analog input) and environmental data from the DHT11 sensor.
-
-Pump Control: The pump activates when the soil moisture is below the threshold and automatically deactivates after a specified duration.
-
-Error Handling: Displays errors on the OLED display if sensors are disconnected or return invalid values.
-
-Blynk Integration: Sends sensor data to Blynk for remote monitoring and receives commands from the app for manual pump control.
-
-EEPROM Storage: Stores and retrieves the soil moisture threshold, avoiding the need to reset it on every restart.
-
-
-Main Functions
-
-sendSensorData(): Reads sensor data, sends it to the Blynk app, displays it on the OLED, and manages the pump state.
-
-managePump(): Controls the pump based on moisture levels and timeout conditions.
-
-startPump() and stopPump(): Turn the pump on/off and update the Blynk app and internal states.
-
-checkConnection(): Ensures Wi-Fi and Blynk connectivity, attempting reconnection if needed.
-
-loadThresholdFromEEPROM() and saveThresholdToEEPROM(): Manage EEPROM storage for moisture thresholds.
-
-
-
----
-
-📄 License
-
-This project is open-source and free to use.
-
-
----
-
-This Smart Plant Watering Project helps keep your plants healthy by ensuring they receive the right amount of water, and allows you to monitor environmental conditions remotely. Perfect for plant enthusiasts, busy plant parents, or anyone interested in IoT!
-
-Happy Gardening! 🌿
+- Blynk
+- Adafruit
+- ESP8266 Community
