@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Plant Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/lucide-icons@0.321.0/dist/lucide.min.js" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(to bottom right, #F0FDFA, #DBEAFE);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            font-family: 'Arial', sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="w-full max-w-4xl">
+        <!-- Main Card -->
+        <div class="bg-white rounded-lg shadow-2xl border-0 overflow-hidden">
+            <!-- Header -->
+            <div class="flex flex-row items-center justify-between border-b p-4">
+                <h2 class="text-xl font-bold flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-database mr-2 text-green-600">
+                        <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+                        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+                    </svg>
+                    Smart Plant Monitor
+                </h2>
+                <div class="flex items-center space-x-2">
+                    <button id="configBtn" class="px-3 py-1 border rounded text-sm hover:bg-gray-100">
+                        Configure Blynk
+                    </button>
+                    <span id="connectionStatus" class="px-2 py-1 rounded text-xs font-semibold bg-red-500 text-white">
+                        Disconnected
+                    </span>
+                </div>
+            </div>
+
+            <!-- Configuration Modal -->
+            <div id="configModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+                <div class="bg-white rounded-lg p-6 w-96">
+                    <h3 class="text-lg font-semibold mb-4">Blynk Configuration</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label for="blynkToken" class="block mb-2 text-sm font-medium">Blynk Auth Token</label>
+                            <input 
+                                type="text" 
+                                id="blynkToken" 
+                                class="w-full px-3 py-2 border rounded"
+                                placeholder="Enter Blynk Auth Token"
+                            >
+                        </div>
+                        <div>
+                            <label for="blynkServer" class="block mb-2 text-sm font-medium">Blynk Server</label>
+                            <input 
+                                type="text" 
+                                id="blynkServer" 
+                                class="w-full px-3 py-2 border rounded"
+                                placeholder="blynk-cloud.com"
+                                value="blynk-cloud.com"
+                            >
+                        </div>
+                        <div class="flex justify-between">
+                            <button id="clearTokenBtn" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">
+                                Clear Token
+                            </button>
+                            <button id="connectBtn" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                                Connect
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sensor Data Cards -->
+            <div class="p-6">
+                <div class="grid md:grid-cols-3 gap-6">
+                    <!-- Moisture Card -->
+                    <div class="bg-white border rounded-lg">
+                        <div class="p-4 border-b">
+                            <h3 class="font-semibold">Soil Moisture</h3>
+                        </div>
+                        <div class="p-4">
+                            <div id="moistureValue" class="text-4xl font-bold text-red-500">0%</div>
+                            <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                                <div id="moistureBar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Temperature Card -->
+                    <div class="bg-white border rounded-lg">
+                        <div class="p-4 border-b">
+                            <h3 class="font-semibold">Temperature</h3>
+                        </div>
+                        <div class="p-4">
+                            <div id="temperatureValue" class="text-4xl font-bold text-red-500">0°C</div>
+                        </div>
+                    </div>
+
+                    <!-- Humidity Card -->
+                    <div class="bg-white border rounded-lg">
+                        <div class="p-4 border-b">
+                            <h3 class="font-semibold">Humidity</h3>
+                        </div>
+                        <div class="p-4">
+                            <div id="humidityValue" class="text-4xl font-bold text-blue-500">0%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pump Control Card -->
+                <div class="bg-white border rounded-lg mt-6">
+                    <div class="p-4 border-b">
+                        <h3 class="font-semibold">Pump Control</h3>
+                    </div>
+                    <div class="p-4 flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div id="pumpStatusIndicator" class="w-4 h-4 rounded-full mr-2 bg-gray-400"></div>
+                            <span id="pumpStatusText">Idle</span>
+                        </div>
+                        <button id="pumpControlBtn" class="px-4 py-2 border rounded hover:bg-gray-100" disabled>
+                            Manual Pump Control
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+       // IndexedDB Utility Functions
+const indexedDBUtils = {
+    openDB: function() {
+        return new Promise((resolve, reject) => {
+            const dbName = 'PlantMonitorDB';
+            const request = indexedDB.open(dbName, 1);
+
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                db.createObjectStore('settings', { keyPath: 'key' });
+            };
+
+            request.onsuccess = (event) => resolve(event.target.result);
+            request.onerror = (event) => reject(event.target.error);
+        });
+    },
+
+    saveSettings: async function(key, value) {
+        const db = await this.openDB();
+        const transaction = db.transaction(['settings'], 'readwrite');
+        const store = transaction.objectStore('settings');
+        store.put({ key, value });
+    },
+
+    getSetting: async function(key) {
+        const db = await this.openDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(['settings'], 'readonly');
+            const store = transaction.objectStore('settings');
+            const request = store.get(key);
+
+            request.onsuccess = () => resolve(request.result ? request.result.value : null);
+            request.onerror = () => reject(request.error);
+        });
+    },
+
+    clearSettings: async function() {
+        const db = await this.openDB();
+        const transaction = db.transaction(['settings'], 'readwrite');
+        const store = transaction.objectStore('settings');
+        
+        store.delete('blynkToken');
+        store.delete('blynkServer');
+    }
+};
+
+// Plant Monitor Application
+class PlantMonitor {
+    constructor() {
+        this.socket = null;
+        this.blynkToken = '';
+        this.blynkServer = 'blynk-cloud.com';
+
+        // DOM Elements
+        this.configBtn = document.getElementById('configBtn');
+        this.configModal = document.getElementById('configModal');
+        this.blynkTokenInput = document.getElementById('blynkToken');
+        this.blynkServerInput = document.getElementById('blynkServer');
+        this.connectBtn = document.getElementById('connectBtn');
+        this.clearTokenBtn = document.getElementById('clearTokenBtn');
+        this.connectionStatus = document.getElementById('connectionStatus');
+
+        // Sensor Display Elements
+        this.moistureValue = document.getElementById('moistureValue');
+        this.moistureBar = document.getElementById('moistureBar');
+        this.temperatureValue = document.getElementById('temperatureValue');
+        this.humidityValue = document.getElementById('humidityValue');
+        this.pumpStatusIndicator = document.getElementById('pumpStatusIndicator');
+        this.pumpStatusText = document.getElementById('pumpStatusText');
+        this.pumpControlBtn = document.getElementById('pumpControlBtn');
+
+        this.initEventListeners();
+        this.loadSavedSettings();
+    }
+
+    initEventListeners() {
+        // Configuration Modal Toggle
+        this.configBtn.addEventListener('click', () => {
+            this.configModal.classList.toggle('hidden');
+            this.configModal.classList.toggle('flex');
+        });
+
+        // Close modal when clicking outside
+        this.configModal.addEventListener('click', (e) => {
+            if (e.target === this.configModal) {
+                this.configModal.classList.add('hidden');
+                this.configModal.classList.remove('flex');
+            }
+        });
+
+        // Connect Button
+        this.connectBtn.addEventListener('click', () => {
+            this.blynkToken = this.blynkTokenInput.value;
+            this.blynkServer = this.blynkServerInput.value || 'blynk-cloud.com';
+            this.connectBlynk();
+        });
+
+        // Clear Token Button
+        this.clearTokenBtn.addEventListener('click', () => {
+            this.clearConnection();
+        });
+    }
+
+    async loadSavedSettings() {
+        try {
+            const savedToken = await indexedDBUtils.getSetting('blynkToken');
+            const savedServer = await indexedDBUtils.getSetting('blynkServer');
+
+            if (savedToken) {
+                this.blynkToken = savedToken;
+                this.blynkTokenInput.value = savedToken;
+            }
+
+            if (savedServer) {
+                this.blynkServer = savedServer;
+                this.blynkServerInput.value = savedServer;
+            }
+        } catch (error) {
+            console.error('Error loading settings:', error);
+        }
+    }
+
+    connectBlynk() {
+        if (this.socket) {
+            this.socket.close();
+        }
+
+        this.updateConnectionStatus('Connecting...');
+
+        try {
+            this.socket = new WebSocket(`wss://${this.blynkServer}/websockets`);
+
+            this.socket.onopen = () => {
+                console.log('WebSocket connected');
+
+                this.socket.send(JSON.stringify({
+                    type: 'auth',
+                    token: this.blynkToken
+                }));
+
+                this.updateConnectionStatus('Connected');
+                indexedDBUtils.saveSettings('blynkToken', this.blynkToken);
+                indexedDBUtils.saveSettings('blynkServer', this.blynkServer);
+                this.configModal.classList.add('hidden');
+                this.configModal.classList.remove('flex');
+            };
+
+            this.socket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    const [moisture, temperature, humidity, pumpState] = data.values || [];
+                    this.updateSensorDisplay(moisture || 0, temperature || 0, humidity || 0, pumpState || 0);
+                } catch (error) {
+                    console.error('Error parsing message:', error);
+                }
+            };
+
+            this.socket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                this.updateConnectionStatus('Connection Error');
+            };
+
+            this.socket.onclose = () => {
+                this.updateConnectionStatus('Disconnected');
+                this.socket = null;
+            };
+        } catch (error) {
+            console.error('Connection failed:', error);
+            this.updateConnectionStatus('Connection Failed');
+        }
+    }
+
+    updateConnectionStatus(status) {
+        this.connectionStatus.textContent = status;
+        this.connectionStatus.classList.remove('bg-red-500', 'bg-yellow-500', 'bg-green-500');
+
+        switch(status) {
+            case 'Connected':
+                this.connectionStatus.classList.add('bg-green-500');
+                break;
+            case 'Connecting...':
+                this.connectionStatus.classList.add('bg-yellow-500');
+                break;
+            default:
+                this.connectionStatus.classList.add('bg-red-500');
+        }
+    }
+
+    updateSensorDisplay(moisture, temperature, humidity, pumpState) {
+        this.moistureValue.textContent = `${moisture}%`;
+        this.moistureBar.style.width = `${moisture}%`;
+
+        this.temperatureValue.textContent = `${temperature}°C`;
+        this.humidityValue.textContent = `${humidity}%`;
+
+        this.pumpStatusText.textContent = pumpState ? 'Watering' : 'Idle';
+        this.pumpStatusIndicator.classList.toggle('bg-green-500', pumpState);
+        this.pumpStatusIndicator.classList.toggle('bg-gray-400', !pumpState);
+
+        this.pumpControlBtn.disabled = !this.socket || this.socket.readyState !== WebSocket.OPEN;
+    }
+
+    clearConnection() {
+        if (this.socket) {
+            this.socket.close();
+            this.socket = null;
+        }
+
+        this.blynkTokenInput.value = '';
+        this.blynkServerInput.value = 'blynk-cloud.com';
+        indexedDBUtils.clearSettings();
+        this.updateConnectionStatus('Disconnected');
+    }
+}
+
+// Initialize the application
+document.addEventListener('DOMContentLoaded', () => {
+    new PlantMonitor();
+});
+    </script>
+</body>
+</html>
