@@ -71,6 +71,91 @@ Ensure the following libraries are installed in your Arduino IDE:
 
 ## 📊 **Wiring Connections**  
 
+# ESP8266 Smart Plant Watering System - Physical Wiring Guide
+
+## Components Required
+1. ESP8266 NodeMCU Development Board
+2. Soil Moisture Sensor
+3. DHT11 Temperature and Humidity Sensor
+4. OLED Display (SSD1306)
+5. 5V Relay Module
+6. Water Pump
+7. Power Supply (5V/2A recommended)
+8. Jumper Wires
+9. Breadboard (optional)
+
+## Wiring Diagram
+
+### 1. Soil Moisture Sensor
+- **Pin A0 (Analog Input)**: Connect soil moisture sensor's analog output
+- **5V**: Connect to sensor's VCC
+- **GND**: Connect to sensor's GND
+
+### 2. Water Pump Relay
+- **Pin D7 (GPIO13)**: Connect to relay control signal
+- **5V**: Power the relay coil
+- **GND**: Relay ground connection
+- **Pump Terminals**: Connect water pump to relay's NO (Normally Open) and COM terminals
+
+### 3. DHT11 Temperature/Humidity Sensor
+- **Pin D4 (GPIO2)**: Data line connection
+- **5V**: Power the sensor
+- **GND**: Sensor ground connection
+- **Recommended**: 4.7kΩ pull-up resistor between VCC and DATA line
+
+### 4. OLED Display (SSD1306)
+- **I2C Communication**
+- **D1 (GPIO5)**: SCL (Clock Line)
+- **D2 (GPIO4)**: SDA (Data Line)
+- **5V**: VCC Power
+- **GND**: Ground Connection
+- **I2C Address**: 0x3C (standard for most 128x64 OLED displays)
+
+## Detailed Wiring Instructions
+
+### ESP8266 Pin Connections
+```
+ESP8266 PIN    |   COMPONENT CONNECTION
+---------------+---------------------------
+A0             |   Soil Moisture Sensor (Analog)
+D4             |   DHT11 Data Pin
+D1 (GPIO5)     |   OLED SCL
+D2 (GPIO4)     |   OLED SDA
+D7 (GPIO13)    |   Relay Control Signal
+5V             |   VCC for Sensors and Relay
+GND            |   Common Ground
+```
+
+### Power Considerations
+- Use a stable 5V/2A power supply
+- Ensure proper ground connections
+- Consider using a separate power supply for the water pump if it requires more current
+
+## Precautions
+- Double-check all connections before powering on
+- Ensure no short circuits
+- Use appropriate wire gauge for power connections
+- Protect wiring from moisture and mechanical stress
+
+## Troubleshooting
+- Verify sensor connections
+- Check power supply stability
+- Ensure correct pin assignments match code
+- Use multimeter to test continuity and voltage
+
+## Optional Enhancements
+- Add level shifters for 3.3V (ESP8266) to 5V sensor compatibility
+- Implement voltage regulation for consistent sensor performance
+- Use waterproof enclosures for outdoor installations
+
+## Safety Notes
+- Disconnect power before making any wiring changes
+- Use appropriate fusing for pump circuit
+- Ensure electrical connections are secure and insulated
+- Follow local electrical safety regulations
+
+**Warning**: Improper wiring can damage components or create safety hazards. If unsure, consult an electronics professional.
+
 ### ESP8266 NodeMCU Pin Connections  
 | **Component**       | **ESP8266 Pin** |  
 |----------------------|-----------------|  
