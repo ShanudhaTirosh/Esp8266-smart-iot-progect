@@ -22,9 +22,9 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 #define DHTPIN D4
 
 // Network credentials
-char ssid[] = "iot"; 
-char pass[] = "12345678"; 
-char auth[] = BLYNK_AUTH_TOKEN;
+const char ssid[] = "iot"; 
+const char pass[] = "12345678"; 
+const char auth[] = BLYNK_AUTH_TOKEN;
 
 // System states and timings
 BlynkTimer timer;
@@ -58,11 +58,10 @@ struct SystemState {
 // Timing variables
 unsigned long pumpStartTime = 0;
 unsigned long lastReconnectAttempt = 0;
-unsigned long lastWateringCheck = 0;
 
 DHTesp dht;
 
-// Function declarations (prototypes)
+// Function prototypes
 bool hasTimeElapsed(unsigned long start, unsigned long interval);
 void saveThresholdToEEPROM();
 void loadThresholdFromEEPROM();
@@ -77,26 +76,26 @@ void displayError(const __FlashStringHelper* errorMsg);
 
 // Function implementations
 bool hasTimeElapsed(unsigned long start, unsigned long interval) {
-    unsigned long currentTime = millis();
-    return (currentTime - start) >= interval;
+    return (millis() - start) >= interval;
 }
 
 void saveThresholdToEEPROM() {
     if (state.moistureThreshold >= 0 && state.moistureThreshold <= 100) {
         EEPROM.begin(512);
         EEPROM.put(0, state.moistureThreshold);
-        boolean success = EEPROM.commit();
-        if (!success) {
+        if (!EEPROM.commit()) {
             displayError(F("EEPROM write failed"));
         }
+        EEPROM.end();
     }
 }
 
 void loadThresholdFromEEPROM() {
     EEPROM.begin(512);
     EEPROM.get(0, state.moistureThreshold);
+    EEPROM.end();
     if (state.moistureThreshold < 0 || state.moistureThreshold > 100) {
-        state.moistureThreshold = 30;  // Default if EEPROM value is invalid
+        state.moistureThreshold = 30;
         saveThresholdToEEPROM();
     }
 }
@@ -105,19 +104,15 @@ void checkConnection() {
     if (WiFi.status() != WL_CONNECTED || !Blynk.connected()) {
         if (state.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
             displayError(F("Max reconnect attempts reached"));
-            ESP.restart();  // Reset device after max attempts
-            return;
+            ESP.restart();
         }
 
         if (hasTimeElapsed(lastReconnectAttempt, RECONNECT_INTERVAL)) {
             lastReconnectAttempt = millis();
             state.reconnectAttempts++;
-            
-            Serial.println(F("Attempting to reconnect..."));
             WiFi.disconnect();
             WiFi.begin(ssid, pass);
-            
-            // Wait for connection with timeout
+
             unsigned long startAttempt = millis();
             while (WiFi.status() != WL_CONNECTED) {
                 if (hasTimeElapsed(startAttempt, WIFI_TIMEOUT)) {
@@ -126,10 +121,10 @@ void checkConnection() {
                 }
                 delay(500);
             }
-            
+
             if (Blynk.connect()) {
+                state.reconnectAttempts = 0;
                 Serial.println(F("Reconnected to Blynk!"));
-                state.reconnectAttempts = 0;  // Reset counter on successful connection
             }
         }
     }
@@ -139,16 +134,12 @@ int readSoilMoisture() {
     long sum = 0;
     for (int i = 0; i < MOISTURE_READINGS; i++) {
         sum += analogRead(SOIL_MOISTURE_PIN);
-        delay(50);  // Short delay between readings
+        delay(50);
     }
     int rawMoisture = sum / MOISTURE_READINGS;
-    
-    // Check for sensor errors
     if (rawMoisture <= 0 || rawMoisture >= 1023) {
-        return -1;  // Error condition
+        return -1;
     }
-    
-    // Map to percentage with calibration values
     return map(rawMoisture, MOISTURE_AIR_VALUE, MOISTURE_WATER_VALUE, 0, 100);
 }
 
@@ -160,8 +151,6 @@ void displayError(const __FlashStringHelper* errorMsg) {
     display.println(F("ERROR:"));
     display.println(errorMsg);
     display.display();
-    
-    // Log error to serial
     Serial.print(F("Error: "));
     Serial.println(errorMsg);
 }
@@ -171,25 +160,20 @@ void displayData() {
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(0, 0);
-    
     display.println(F("Plant Monitor"));
     display.println(F("-------------"));
     display.print(F("Moisture: "));
     display.print(state.soilMoisture);
     display.println(F("%"));
-    
     display.print(F("Temp: "));
-    display.print(state.temperature, 1);  // One decimal place
+    display.print(state.temperature, 1);
     display.println(F("C"));
-    
     display.print(F("Humid: "));
-    display.print(state.humidity, 1);  // One decimal place
+    display.print(state.humidity, 1);
     display.println(F("%"));
-    
     if (pumpState) {
         display.println(F("Pump: ON"));
     }
-    
     display.display();
 }
 
@@ -199,7 +183,6 @@ void startPump() {
     pumpStartTime = millis();
     wateringInProgress = true;
     Blynk.virtualWrite(V4, 1);
-    Serial.println(F("Pump started"));
 }
 
 void stopPump() {
@@ -208,59 +191,44 @@ void stopPump() {
     wateringInProgress = false;
     state.lastWateringTime = millis();
     Blynk.virtualWrite(V4, 0);
-    Serial.println(F("Pump stopped"));
 }
 
 void managePump() {
-    if (manualOverride) {
-        return;
-    }
-
-    // Check if pump has been running too long (safety check)
+    if (manualOverride) return;
     if (pumpState && hasTimeElapsed(pumpStartTime, SAFETY_TIMEOUT)) {
         stopPump();
         displayError(F("Pump timeout!"));
-        return;
-    }
-
-    // Only check watering needs if not currently watering
-    if (!wateringInProgress) {
-        if (state.soilMoisture < state.moistureThreshold && 
-            hasTimeElapsed(state.lastWateringTime, MOISTURE_STABILIZATION_DELAY)) {
-            startPump();
-        }
+    } else if (!wateringInProgress && state.soilMoisture < state.moistureThreshold && hasTimeElapsed(state.lastWateringTime, MOISTURE_STABILIZATION_DELAY)) {
+        startPump();
     } else if (pumpState && hasTimeElapsed(pumpStartTime, PUMP_RUN_TIME)) {
         stopPump();
     }
 }
 
 void sendSensorData() {
-    // Read soil moisture with error checking
     int moistureReading = readSoilMoisture();
     if (moistureReading == -1) {
         displayError(F("Soil sensor error!"));
         return;
     }
     state.soilMoisture = moistureReading;
-    
-    // Read temperature and humidity with retry
+
     TempAndHumidity data;
-    for (int i = 0; i < 3; i++) {  // Try up to 3 times
+    for (int i = 0; i < 3; i++) {
         data = dht.getTempAndHumidity();
         if (dht.getStatus() == DHTesp::ERROR_NONE) {
             state.temperature = data.temperature;
             state.humidity = data.humidity;
             break;
         }
-        delay(1000);  // Wait before retry
+        delay(2000);
     }
-    
+
     if (dht.getStatus() != DHTesp::ERROR_NONE) {
         displayError(F("DHT sensor error!"));
         return;
     }
 
-    // Send data to Blynk if connected
     if (Blynk.connected()) {
         Blynk.virtualWrite(V1, state.soilMoisture);
         Blynk.virtualWrite(V2, state.temperature);
@@ -271,14 +239,9 @@ void sendSensorData() {
     managePump();
 }
 
-// Blynk event handlers
 BLYNK_WRITE(V4) {
     manualOverride = param.asInt();
-    if (manualOverride) {
-        startPump();
-    } else {
-        stopPump();
-    }
+    if (manualOverride) startPump(); else stopPump();
 }
 
 BLYNK_WRITE(V5) {
@@ -291,41 +254,21 @@ BLYNK_WRITE(V5) {
 
 void setup() {
     Serial.begin(115200);
-    
-    // Initialize display with error handling
     Wire.begin();
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
         Serial.println(F("SSD1306 allocation failed"));
         delay(1000);
         ESP.restart();
     }
-    
-    // Initialize pins
     pinMode(RELAY_PIN, OUTPUT);
     digitalWrite(RELAY_PIN, LOW);
     pinMode(SOIL_MOISTURE_PIN, INPUT);
-    
-    // Initialize DHT sensor
     dht.setup(DHTPIN, DHTesp::DHT11);
-    
-    // Load saved threshold
     loadThresholdFromEEPROM();
-    
-    // Initialize state
-    state.reconnectAttempts = 0;
-    state.lastWateringTime = 0;
-    
-    // Enable watchdog
     ESP.wdtEnable(WDTO_8S);
-    
-    // Connect to Blynk
     WiFi.begin(ssid, pass);
     Blynk.config(auth);
-    
-    // Initialize timer
     timer.setInterval(10000L, sendSensorData);
-    
-    // Initial display
     display.clearDisplay();
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
@@ -335,7 +278,7 @@ void setup() {
 }
 
 void loop() {
-    ESP.wdtFeed();  // Feed the watchdog
+    ESP.wdtFeed();  // Feed the watchdog timer to prevent reset
     checkConnection();
     Blynk.run();
     timer.run();
