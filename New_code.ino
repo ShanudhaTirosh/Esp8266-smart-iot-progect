@@ -27,8 +27,8 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 #define DHTPIN D4
 
 // Network credentials
-const char ssid[] = "iot"; 
-const char pass[] = "12345678"; 
+const char ssid[] = "iot";
+const char pass[] = "12345678";
 const char auth[] = BLYNK_AUTH_TOKEN;
 
 // System states and timings
@@ -105,7 +105,7 @@ void loadRecoveryState() {
     if (recovery.valid) {
         state.lastWateringTime = recovery.lastWateringTime;
         state.previousMoisture = recovery.lastMoisture;
-        
+
         if (recovery.wasWatering) {
             delay(MOISTURE_STABILIZATION_DELAY);
             int currentMoisture = readSoilMoisture();
@@ -146,9 +146,9 @@ int readSoilMoisture() {
         readings[i] = analogRead(SOIL_MOISTURE_PIN);
         delay(50);
     }
-    
+
     // Sort readings to get median
-    for (int i = 0; i < MOISTURE_READINGS-1; i++) {
+    for (int i = 0; i < MOISTURE_READINGS - 1; i++) {
         for (int j = i + 1; j < MOISTURE_READINGS; j++) {
             if (readings[i] > readings[j]) {
                 int temp = readings[i];
@@ -157,7 +157,7 @@ int readSoilMoisture() {
             }
         }
     }
-    
+
     int medianReading = readings[MOISTURE_READINGS / 2];
     if (medianReading <= 0 || medianReading >= 1023) {
         return -1;
@@ -171,7 +171,7 @@ bool checkPumpEfficiency() {
         state.lastEfficiencyCheck = millis();
         int moistureIncrease = state.soilMoisture - state.previousMoisture;
         state.previousMoisture = state.soilMoisture;
-        
+
         return moistureIncrease >= MOISTURE_INCREASE_THRESHOLD;
     }
     return true;
@@ -181,7 +181,7 @@ void handlePumpProtection() {
     if (!pumpState) return;
 
     state.pumpRunningTime = millis() - pumpStartTime;
-    
+
     // Check for maximum runtime exceeded
     if (state.pumpRunningTime > MAX_PUMP_RUN_TIME) {
         stopPump();
@@ -290,13 +290,13 @@ void stopPump() {
 
 void managePump() {
     if (manualOverride) return;
-    
+
     handlePumpProtection();
-    
+
     if (pumpState && hasTimeElapsed(pumpStartTime, SAFETY_TIMEOUT)) {
         stopPump();
         displayError(F("Pump timeout!"));
-    } else if (!wateringInProgress && state.soilMoisture < state.moistureThreshold && 
+    } else if (!wateringInProgress && state.soilMoisture < state.moistureThreshold &&
                hasTimeElapsed(state.lastWateringTime, MOISTURE_STABILIZATION_DELAY)) {
         startPump();
     } else if (pumpState && hasTimeElapsed(pumpStartTime, PUMP_RUN_TIME)) {
@@ -356,34 +356,34 @@ BLYNK_WRITE(V5) {
 void setup() {
     Serial.begin(115200);
     Wire.begin();
-    
+
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
         Serial.println(F("SSD1306 allocation failed"));
         delay(1000);
         ESP.restart();
     }
-    
+
     pinMode(RELAY_PIN, OUTPUT);
     digitalWrite(RELAY_PIN, LOW);
     pinMode(SOIL_MOISTURE_PIN, INPUT);
-    
+
     dht.setup(DHTPIN, DHTesp::DHT11);
-    
+
     loadThresholdFromEEPROM();
     loadRecoveryState();
-    
+
     ESP.wdtEnable(WDTO_8S);
     WiFi.begin(ssid, pass);
     Blynk.config(auth);
     timer.setInterval(10000L, sendSensorData);
-    
+
     display.clearDisplay();
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(0, 0);
     display.println(F("System starting..."));
     display.display();
-    
+
     // Initialize state variables
     state.pumpRunningTime = 0;
     state.lastEfficiencyCheck = 0;
@@ -395,4 +395,3 @@ void loop() {
     checkConnection();
     Blynk.run();
     timer.run();
-}
