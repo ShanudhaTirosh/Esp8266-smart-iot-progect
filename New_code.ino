@@ -395,3 +395,4 @@ void loop() {
     checkConnection();
     Blynk.run();
     timer.run();
+}
